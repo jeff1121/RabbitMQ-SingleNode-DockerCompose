@@ -1,0 +1,62 @@
+version: "3.9"
+
+x-common: &common
+  dns_search:
+    - logicalis.local
+  dns:
+    - 208.67.222.222
+    - 9.9.9.9
+  deploy:
+    replicas: 1
+    placement:
+      max_replicas_per_node: 1
+    update_config:
+      parallelism: 2
+      delay: 10s
+    restart_policy:
+      condition: on-failure
+      delay: 5s
+      max_attempts: 5
+      window: 120s
+  logging:
+    driver: "json-file"
+    options:
+      tag: "{{.DaemonName}}(image={{.ImageName}};name={{.Name}};id={{.ID}})"
+      max-size: "1024k"
+      max-file: "1024"
+
+services:
+  rabbitmq:
+    <<: *common
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER missing}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS missing}
+      RABBITMQ_PROMETHEUS_RETURNS_PER_OBJECT_METRICS: "true"
+    command: >-
+      bash -c "rabbitmq-plugins enable --offline rabbitmq_prometheus && rabbitmq-server"
+    ports:
+      - "5672:5672"      # AMQP 連線埠
+      - "15672:15672"    # 管理介面
+      - "15692:15692"    # Prometheus 指標
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./config/rabbitmq:/etc/rabbitmq
+
+  prometheus:
+    <<: *common
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+volumes:
+  rabbitmq_data:
