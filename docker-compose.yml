@@ -37,7 +37,7 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS missing}
       RABBITMQ_PROMETHEUS_RETURNS_PER_OBJECT_METRICS: "true"
     command: >-
-      bash -c "rabbitmq-plugins enable --offline rabbitmq_prometheus && rabbitmq-server"
+      bash -c "rabbitmq-plugins enable --offline rabbitmq_management rabbitmq_prometheus && rabbitmq-server"
     ports:
       - "5672:5672"      # AMQP 連線埠
       - "15672:15672"    # 管理介面
